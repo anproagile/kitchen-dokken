@@ -47,6 +47,7 @@ module Kitchen
       default_config :cap_add, nil
       default_config :cap_drop, nil
       default_config :security_opt, nil
+      default_config :forward, nil
       default_config :network_mode, 'bridge'
 
       # (see Base#create)
@@ -96,12 +97,17 @@ module Kitchen
       def delete_work_image
         return unless ::Docker::Image.exist?(work_image, docker_connection)
         with_retries { @work_image = ::Docker::Image.get(work_image, docker_connection) }
-        with_retries { @work_image.remove(force: true) }
+
+        begin
+          with_retries { @work_image.remove(force: true) }
+        rescue ::Docker::Error::ConflictError
+          debug "driver - #{work_image} cannot be removed"
+        end
       end
 
       def build_work_image(state)
         # require 'pry' ; binding.pry
-        
+
         return if ::Docker::Image.exist?(work_image, docker_connection)
 
         FileUtils.mkdir_p context_root
@@ -121,7 +127,7 @@ module Kitchen
             )
           end
         rescue Exception => e
-          fail  "work_image build failed: #{e}" 
+          fail  "work_image build failed: #{e}"
         end
         state[:work_image] = work_image
       end
@@ -195,6 +201,7 @@ module Kitchen
           'Cmd' => Shellwords.shellwords(config[:pid_one_command]),
           'Image' => "#{repo(work_image)}:#{tag(work_image)}",
           'Hostname' => config[:hostname],
+          'ExposedPorts' => exposed_ports({}, config[:forward]),
           'HostConfig' => {
             'Privileged' => config[:privileged],
             'VolumesFrom' => [chef_container_name, data_container_name],
@@ -204,6 +211,7 @@ module Kitchen
             'CapDrop' => Array(config[:cap_drop]),
             'SecurityOpt' => Array(config[:security_opt]),
             'NetworkMode' => config[:network_mode],
+            'PortBindings' => port_forwards({}, config[:forward]),
           }
         )
         state[:runner_container] = runner_container.json
@@ -214,11 +222,7 @@ module Kitchen
         data_container = run_container(
           'name' => data_container_name,
           'Image' => "#{repo(data_image)}:#{tag(data_image)}",
-          'PortBindings' => {
-            '22/tcp' => [
-              { 'HostPort' => '' }
-            ]
-          },
+          'PortBindings' => port_forwards({}, "22"),
           'PublishAllPorts' => true
         )
         # require 'pry' ; binding.pry
@@ -245,7 +249,7 @@ module Kitchen
           )
           state[:chef_container] = chef_container.json
         rescue
-          debug "driver - #{chef_container_name} alreay exists"
+          debug "driver - #{chef_container_name} already exists"
         end
       end
 
@@ -360,12 +364,30 @@ module Kitchen
         config[:image]
       end
 
+      def exposed_ports(config, rules)
+        Array(rules).each do |prt_string|
+          guest, host = prt_string.to_s.split(":").reverse
+          config["#{guest}/tcp"] = {}
+        end
+        config
+      end
+
+      def port_forwards(config, rules)
+        Array(rules).each do |prt_string|
+          guest, host = prt_string.to_s.split(":").reverse
+          config["#{guest}/tcp"] = [{
+            :HostPort => host || ''
+          }]
+        end
+        config
+      end
+
       def pull_if_missing(image)
         return if ::Docker::Image.exist?("#{repo(image)}:#{tag(image)}", docker_connection)
         pull_image image
       end
 
-      def pull_image(image)        
+      def pull_image(image)
         with_retries {
           ::Docker::Image.create({ 'fromImage' => "#{repo(image)}:#{tag(image)}" }, docker_connection)
         }
