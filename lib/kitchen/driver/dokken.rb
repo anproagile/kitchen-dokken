@@ -96,12 +96,7 @@ module Kitchen
       def delete_work_image
         return unless ::Docker::Image.exist?(work_image, docker_connection)
         with_retries { @work_image = ::Docker::Image.get(work_image, docker_connection) }
-
-        begin
-          with_retries { @work_image.remove(force: true) }
-        rescue ::Docker::Error::ConflictError
-          debug "driver - #{work_image} cannot be removed"
-        end
+        with_retries { @work_image.remove(force: true) }
       end
 
       def build_work_image(state)
@@ -151,7 +146,8 @@ module Kitchen
       end
 
       def instance_name
-        instance.name
+        prefix = File.basename(FileUtils.pwd)
+        "#{prefix}-#{instance.name}"
       end
 
       def delete_chef_container
@@ -249,7 +245,7 @@ module Kitchen
           )
           state[:chef_container] = chef_container.json
         rescue
-          debug "driver - #{chef_container_name} already exists"
+          debug "driver - #{chef_container_name} alreay exists"
         end
       end
 
@@ -353,7 +349,7 @@ module Kitchen
       end
 
       def data_container_name
-        "#{instance.name}-data"
+        "#{instance_name}-data"
       end
 
       def data_image
@@ -376,7 +372,7 @@ module Kitchen
       end
 
       def runner_container_name
-        "#{instance.name}"
+        "#{instance_name}"
       end
 
       def with_retries(&block)
