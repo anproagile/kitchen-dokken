@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 #
-# Author:: Sean OMeara (<sean@sean.io>)
+# Author:: Sean OMeara (<sean@chef.io>)
 #
 # Copyright (C) 2015, Sean OMeara
 #
@@ -19,6 +19,6 @@
 module Kitchen
   module Driver
     # Version string for Dokken Kitchen driver
-    DOKKEN_VERSION = '2.1.4'.freeze
+    DOKKEN_VERSION = '2.1.5'.freeze
   end
 end
