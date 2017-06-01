@@ -68,11 +68,11 @@ module Kitchen
 
           with_retries { @runner = ::Docker::Container.get(instance_name, {}, docker_connection) }
           with_retries do
-            o = @runner.exec(Shellwords.shellwords(command), wait: options[:timeout], 'e' => { 'TERM' => 'xterm' }) { |_stream, chunk| print chunk.to_s }
+            o = @runner.exec(Shellwords.shellwords(command), 'e' => { 'TERM' => 'xterm' }) { |_stream, chunk| print chunk.to_s }
             @exit_code = o[2]
           end
 
-          raise Transport::DockerExecFailed, "Docker Exec (#{@exit_code}) for command: [#{command}]" if @exit_code != 0
+          raise Transport::DockerExecFailed.new("Docker Exec (#{@exit_code}) for command: [#{command}]", @exit_code) if @exit_code != 0
         end
 
         def upload(locals, remote)
@@ -191,7 +191,6 @@ module Kitchen
         opts[:docker_host_options] = ::Docker.options
         opts[:data_container] = data[:data_container]
         opts[:instance_name] = data[:instance_name]
-        opts[:timeout] = data[:write_timeout]
         opts
       end
 
