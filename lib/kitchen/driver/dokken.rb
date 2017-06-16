@@ -44,10 +44,10 @@ module Kitchen
       default_config :docker_info, docker_info
       default_config :docker_host_url, default_docker_host
       default_config :forward, nil
-      default_config :hostname, 'dokken'
+      default_config :hostname, nil
       default_config :image_prefix, nil
       default_config :links, nil
-      default_config :network_mode, 'dokken'
+      default_config :network_mode, 'bridge'
       default_config :pid_one_command, 'sh -c "trap exit 0 SIGTERM; while :; do sleep 1; done"'
       default_config :privileged, false
       default_config :read_timeout, 3600
@@ -59,9 +59,6 @@ module Kitchen
       def create(state)
         # image to config
         pull_platform_image
-
-        # network
-        make_dokken_network
 
         # chef
         pull_chef_image
@@ -240,63 +237,41 @@ module Kitchen
       def start_runner_container(state)
         debug "driver - starting #{runner_container_name}"
 
-        config = {
+        runner_container = run_container(
           'name' => runner_container_name,
-          'Cmd' => Shellwords.shellwords(self[:pid_one_command]),
+          'Cmd' => Shellwords.shellwords(config[:pid_one_command]),
           'Image' => "#{repo(work_image)}:#{tag(work_image)}",
-          'Hostname' => self[:hostname],
-          'ExposedPorts' => exposed_ports({}, self[:forward]),
+          'Hostname' => config[:hostname],
+          'ExposedPorts' => exposed_ports({}, config[:forward]),
           'Volumes' => dokken_volumes,
           'HostConfig' => {
-            'Privileged' => self[:privileged],
+            'Privileged' => config[:privileged],
             'VolumesFrom' => dokken_volumes_from,
             'Binds' => dokken_binds,
-            'Dns' => self[:dns],
-            'DnsSearch' => self[:dns_search],
-            'Links' => Array(self[:links]),
-            'CapAdd' => Array(self[:cap_add]),
-            'CapDrop' => Array(self[:cap_drop]),
-            'SecurityOpt' => Array(self[:security_opt]),
-            'NetworkMode' => self[:network_mode],
-            'PortBindings' => port_forwards({}, self[:forward]),
-          },
-          'NetworkingConfig' => {
-            'EndpointsConfig' => {
-              self[:network_mode] => {
-                'Aliases' => Array(self[:hostname]),
-              },
-            },
-          },
-        }
-        runner_container = run_container(config)
+            'Dns' => config[:dns],
+            'DnsSearch' => config[:dns_search],
+            'Links' => Array(config[:links]),
+            'CapAdd' => Array(config[:cap_add]),
+            'CapDrop' => Array(config[:cap_drop]),
+            'SecurityOpt' => Array(config[:security_opt]),
+            'NetworkMode' => config[:network_mode],
+            'PortBindings' => port_forwards({}, config[:forward]),
+          }
+        )
         state[:runner_container] = runner_container.json
       end
 
       def start_data_container(state)
         debug "driver - creating #{data_container_name}"
-        config = {
+        data_container = run_container(
           'name' => data_container_name,
           'Image' => "#{repo(data_image)}:#{tag(data_image)}",
           'HostConfig' => {
             'PortBindings' => port_forwards({}, '22'),
             'PublishAllPorts' => true,
-            'NetworkMode' => self[:network_mode],
-          },
-        }
-        data_container = run_container(config)
+          }
+        )
         state[:data_container] = data_container.json
-      end
-
-      def make_dokken_network
-        info 'driver - checking for dokken network'
-        ::Docker::Network.get('dokken', {}, docker_connection)
-      rescue
-        begin
-          info 'driver - creating dokken network'
-          ::Docker::Network.create('dokken', {})
-        rescue ::Docker::Error => e
-          info "driver - :#{e}:"
-        end
       end
 
       def make_data_image
@@ -309,18 +284,14 @@ module Kitchen
       rescue ::Docker::Error::NotFoundError
         begin
           debug "driver - creating volume container #{chef_container_name} from #{chef_image}"
-          config = {
+          chef_container = create_container(
             'name' => chef_container_name,
             'Cmd' => 'true',
-            'Image' => "#{repo(chef_image)}:#{tag(chef_image)}",
-            'HostConfig' => {
-              'NetworkMode' => self[:network_mode],
-            },
-          }
-          chef_container = create_container(config)
+            'Image' => "#{repo(chef_image)}:#{tag(chef_image)}"
+          )
           state[:chef_container] = chef_container.json
-        rescue ::Docker::Error => e
-          raise "driver - #{chef_container_name} failed to create #{e}"
+        rescue
+          debug "driver - #{chef_container_name} already exists"
         end
       end
 
