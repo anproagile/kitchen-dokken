@@ -95,11 +95,11 @@ EOF
     def dokken_create_sandbox
       info("Creating kitchen sandbox at #{dokken_kitchen_sandbox}")
       FileUtils.mkdir_p(dokken_kitchen_sandbox)
-      File.chmod(0755, dokken_kitchen_sandbox)
+      File.chmod(0o755, dokken_kitchen_sandbox)
 
       info("Creating verifier sandbox at #{dokken_verifier_sandbox}")
       FileUtils.mkdir_p(dokken_verifier_sandbox)
-      File.chmod(0755, dokken_verifier_sandbox)
+      File.chmod(0o755, dokken_verifier_sandbox)
     end
 
     def dokken_delete_sandbox
@@ -137,11 +137,7 @@ EOF
     end
 
     def instance_name
-      prefix = if config[:image_prefix].nil?
-                 (Digest::SHA2.hexdigest FileUtils.pwd)[0, 10]
-               else
-                 config[:image_prefix]
-               end
+      prefix = (Digest::SHA2.hexdigest FileUtils.pwd)[0, 10]
       "#{prefix}-#{instance.name}"
     end
 
@@ -163,7 +159,7 @@ EOF
       info("Creating kitchen sandbox in #{sandbox_path}")
       unless ::Dir.exist?(sandbox_path)
         FileUtils.mkdir_p(sandbox_path)
-        File.chmod(0755, sandbox_path)
+        File.chmod(0o755, sandbox_path)
       end
     end
   end
@@ -175,7 +171,7 @@ module Kitchen
       def create_sandbox
         info("Creating kitchen sandbox in #{sandbox_path}")
         FileUtils.mkdir_p(sandbox_path)
-        File.chmod(0755, sandbox_path)
+        File.chmod(0o755, sandbox_path)
       end
 
       # this MUST be named 'sandbox_path' because ruby.
@@ -198,7 +194,7 @@ module Kitchen
         info("Creating kitchen sandbox in #{sandbox_path}")
         unless ::Dir.exist?(sandbox_path)
           FileUtils.mkdir_p(sandbox_path)
-          File.chmod(0755, sandbox_path)
+          File.chmod(0o755, sandbox_path)
         end
       end
 
