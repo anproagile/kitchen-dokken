@@ -9,51 +9,17 @@ user 'notroot' do
   action :create
 end
 
-package 'git' do
+package_list = %w(git ruby ruby-devel rubygem-io-console rubygem-bundler rubygem-rake gcc redhat-rpm-config libffi libffi-devel)
+
+package package_list do
   action :install
 end
 
 git '/home/notroot/kitchen-dokken' do
   repository 'https://github.com/someara/kitchen-dokken'
-  revision 'master'
+  revision 'someara/greentravis'
   user 'notroot'
   action :sync
-end
-
-package 'ruby' do
-  action :install
-end
-
-package 'ruby-devel' do
-  action :install
-end
-
-package 'rubygem-io-console' do
-  action :install
-end
-
-package 'rubygem-bundler' do
-  action :install
-end
-
-package 'rubygem-rake' do
-  action :install
-end
-
-package 'gcc' do
-  action :install
-end
-
-package 'redhat-rpm-config' do
-  action :install
-end
-
-package 'libffi' do
-  action :install
-end
-
-package 'libffi-devel' do
-  action :install
 end
 
 execute 'install gem bundle' do

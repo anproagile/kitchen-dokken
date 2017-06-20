@@ -1,5 +1,26 @@
 module Dokken
   module Helpers
+    # https://stackoverflow.com/questions/517219/ruby-see-if-a-port-is-open
+    require 'socket'
+    require 'timeout'
+
+    def port_open?(ip, port)
+      begin
+        Timeout.timeout(1) do
+          begin
+            s = TCPSocket.new(ip, port)
+            s.close
+            return true
+          rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
+            return false
+          end
+        end
+      rescue Timeout::Error
+      end
+
+      false
+    end
+
     def insecure_ssh_public_key
       <<-EOF
 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCoJwyW7qNhw+NTuOjC4+RVpESl+JBXebXzB7JqxRgKAbymq6B39azEAiNx5NzHkWcQmOyQNhFpKFSAufegcXRS4ctS1LcElEoXe9brDAqKEBSkmnXYfZXMNIG0Enw4+5W/rZxHFCAlsUSAHYtYZEs+3CgbIWuHhZ95C8UC6nGLWHNZOjcbsYZFrnFfO0qg0ene2w8LKhxqj5X0MRSdCIn1IwyxIbl5NND5Yk1Hx8JKsJtTiNTdxssiMgmM5bvTbYQUSf8pbGrRI30VQKBgQ8/UkidZbaTfvzWXYpwcDUERSbzEYCvkUytTemZIv6uhpPxqkfjl6KEOOml/iGqquPEr test-kitchen-rsa
@@ -42,14 +63,20 @@ EOF
       <<-EOF
 FROM centos:7
 MAINTAINER Sean OMeara \"sean@sean.io\"
-
 ENV LANG en_US.UTF-8
 
 RUN yum -y install tar rsync openssh-server passwd git
 RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ''
 
+# uncomment to debug cert issues
+# RUN echo 'root:dokkendokkendokken' | chpasswd
+# RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+# RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
 RUN mkdir -p /root/.ssh/
 COPY authorized_keys /root/.ssh/authorized_keys
+RUN chmod 700 /root/.ssh/
+RUN chmod 600  /root/.ssh/authorized_keys
 
 EXPOSE 22
 CMD [ "/usr/sbin/sshd", "-D", "-p", "22", "-o", "UseDNS=no", "-o", "UsePrivilegeSeparation=no", "-o", "MaxAuthTries=60" ]
@@ -95,11 +122,11 @@ EOF
     def dokken_create_sandbox
       info("Creating kitchen sandbox at #{dokken_kitchen_sandbox}")
       FileUtils.mkdir_p(dokken_kitchen_sandbox)
-      File.chmod(0755, dokken_kitchen_sandbox)
+      File.chmod(0o755, dokken_kitchen_sandbox)
 
       info("Creating verifier sandbox at #{dokken_verifier_sandbox}")
       FileUtils.mkdir_p(dokken_verifier_sandbox)
-      File.chmod(0755, dokken_verifier_sandbox)
+      File.chmod(0o755, dokken_verifier_sandbox)
     end
 
     def dokken_delete_sandbox
@@ -137,16 +164,12 @@ EOF
     end
 
     def instance_name
-      prefix = if config[:image_prefix].nil?
-                 (Digest::SHA2.hexdigest FileUtils.pwd)[0, 10]
-               else
-                 config[:image_prefix]
-               end
+      prefix = (Digest::SHA2.hexdigest FileUtils.pwd)[0, 10]
       "#{prefix}-#{instance.name}"
     end
 
     def remote_docker_host?
-      return false if config[:docker_info]['OperatingSystem'].include?('Boot2Docker')
+      # return false if config[:docker_info]['OperatingSystem'].include?('Boot2Docker')
       return true if config[:docker_host_url] =~ /^tcp:/
       false
     end
@@ -163,7 +186,7 @@ EOF
       info("Creating kitchen sandbox in #{sandbox_path}")
       unless ::Dir.exist?(sandbox_path)
         FileUtils.mkdir_p(sandbox_path)
-        File.chmod(0755, sandbox_path)
+        File.chmod(0o755, sandbox_path)
       end
     end
   end
@@ -175,7 +198,7 @@ module Kitchen
       def create_sandbox
         info("Creating kitchen sandbox in #{sandbox_path}")
         FileUtils.mkdir_p(sandbox_path)
-        File.chmod(0755, sandbox_path)
+        File.chmod(0o755, sandbox_path)
       end
 
       # this MUST be named 'sandbox_path' because ruby.
@@ -198,7 +221,7 @@ module Kitchen
         info("Creating kitchen sandbox in #{sandbox_path}")
         unless ::Dir.exist?(sandbox_path)
           FileUtils.mkdir_p(sandbox_path)
-          File.chmod(0755, sandbox_path)
+          File.chmod(0o755, sandbox_path)
         end
       end
 
