@@ -5,13 +5,11 @@ user 'notroot' do
 end
 
 package_list = %w(
-  gcc-c++
   gcc
   git
   iputils
   libffi
   libffi-devel
-  make
   net-tools
   nmap
   procps-ng
