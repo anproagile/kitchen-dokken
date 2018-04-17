@@ -9,8 +9,6 @@ Overview
 This test-kitchen plugin provides a driver, transport, and provisioner
 for rapid cookbook testing and container development using Docker and Chef.
 
-![Rokken.](http://i.onionstatic.com/onion/5507/4/16x9/1600.jpg)
-
 Usage
 =====
 Add the following to your ~/.bash_profile
@@ -468,6 +466,8 @@ into the image. This does not. To make this work, I had to create a Driver, a Tr
 and a Provisioner that blur the traditional duties of each. The current Docker driver
 can be used with Puppet, Ansible, CFEngine provisioners. This (for the time being) requires
 Chef.
+
+See ["Kitchen-Docker or Kitchen-Dokken? Using Test Kitchen and Docker for fast cookbook testing"](https://blog.chef.io/2018/03/06/kitchen-docker-or-kitchen-dokken-using-test-kitchen-and-docker-for-fast-cookbook-testing/) for a more detailed comparison.
 
 ### How can I use kitchen to automatically test and publish containers?
 
