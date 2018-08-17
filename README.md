@@ -2,14 +2,13 @@ kitchen-dokken
 ==============
 
 [![Build Status](https://travis-ci.org/someara/kitchen-dokken.svg?branch=master)](https://travis-ci.org/someara/kitchen-dokken)
+[![Gem Version](https://badge.fury.io/rb/kitchen-dokken.svg)](https://badge.fury.io/rb/kitchen-dokken)
 
 Overview
 ========
 
 This test-kitchen plugin provides a driver, transport, and provisioner
 for rapid cookbook testing and container development using Docker and Chef.
-
-![Rokken.](http://i.onionstatic.com/onion/5507/4/16x9/1600.jpg)
 
 Usage
 =====
