@@ -38,7 +38,7 @@ git '/home/notroot/kitchen-dokken' do
 end
 
 execute 'install gem bundle' do
-  command '/usr/bin/bundle install --without development --path vendor/bundle'
+  command '/usr/bin/bundle install --without development'
   cwd '/home/notroot/kitchen-dokken'
   user 'notroot'
   live_stream false
