@@ -374,22 +374,6 @@ You can combine `intermediate_instructions` and `pid_one_command` as needed.
       - RUN /usr/bin/apt-get install apt-transport-https
 ```
 
-### Running with User Namespaces enabled
-
-IF you are running a Docker daemon with user namespace remapping enabled you'll get errors running dokken with priveleged containers.
-
-To mitigate this, add the following to your driver definition:
-```yaml
-platforms:
-- name: centos-7
-  driver:
-    image: centos:7
-    privileged: true
-    userns_host: true
-```
-
-This will disable user namespaces for the running container.
-
 ### Caching Downloaded Files
 
 On Debian/Ubuntu systems, all files downloaded via it's package manager (`apt`) are stored at `/var/cache/apt/archives/`.
@@ -478,6 +462,19 @@ provisioner:
   chef_options: ""
   chef_log_level: debug
   chef_output_format: minimal
+```
+
+Disable pulling platform images
+===============================
+
+To test a locally built image without pulling it first, one can disable
+pulling of platform images, which will avoid pulling images that already
+exist locally.
+
+```yaml
+driver:
+  name: dokken
+  pull_platform_image: false
 ```
 
 Testing without Chef

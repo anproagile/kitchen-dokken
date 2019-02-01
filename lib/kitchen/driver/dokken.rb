@@ -58,7 +58,7 @@ module Kitchen
       default_config :tmpfs, {}
       default_config :volumes, nil
       default_config :write_timeout, 3600
-      default_config :userns_host, false
+      default_config :pull_platform_image, true
 
       # (see Base#create)
       def create(state)
@@ -310,9 +310,6 @@ module Kitchen
         unless self[:entrypoint].to_s.empty?
           config['Entrypoint'] = self[:entrypoint]
         end
-        if self[:userns_host]
-          config['HostConfig']['UsernsMode'] = 'host'
-        end
         runner_container = run_container(config)
         state[:runner_container] = runner_container.json
       end
@@ -390,7 +387,7 @@ module Kitchen
 
       def pull_platform_image
         debug "driver - pulling #{chef_image} #{repo(platform_image)} #{tag(platform_image)}"
-        pull_image platform_image
+        config[:pull_platform_image] ? pull_image(platform_image) : pull_if_missing(platform_image)
       end
 
       def pull_chef_image
