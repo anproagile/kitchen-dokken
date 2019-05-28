@@ -58,8 +58,7 @@ execute 'Test Kitchen verify hello' do
   live_stream true
   environment 'PATH' => '/usr/bin:/usr/local/bin:/home/notroot/bin',
               'HOME' => '/home/notroot',
-              'DOCKER_HOST' => 'tcp://127.0.0.1:2375',
-              'CHEF_LICENSE' => 'accept-no-persist'
+              'DOCKER_HOST' => 'tcp://127.0.0.1:2375'
   action :run
 end
 
@@ -88,7 +87,6 @@ execute 'Test Kitchen verify without image pull' do
   live_stream true
   environment 'PATH' => '/usr/bin:/usr/local/bin:/home/notroot/bin',
               'HOME' => '/home/notroot',
-              'DOCKER_HOST' => 'tcp://127.0.0.1:2375',
-              'CHEF_LICENSE' => 'accept-no-persist'
+              'DOCKER_HOST' => 'tcp://127.0.0.1:2375'
   action :run
 end
