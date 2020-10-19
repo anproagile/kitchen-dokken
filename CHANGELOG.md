@@ -1,18 +1,5 @@
 # Dokken Changelog
 
-# 2.11.0 (2020-09-14)
-
-- Allow docker-api gem version 2.0, which works with newer docker API releases and is Ruby 2.7 compatible
-
-# 2.10.0 (2020-07-14)
-
-- Added a new `memory_limit` config to set memory limits on the container. Thanks `@shanethehat`
-
-# 2.9.1 (2020-07-14)
-
-- Add docs for internal CA and MITM proxy Thanks `@Tensibai`
-- Fix using `multiple_converge`. Thanks `@ramereth`
-
 # 2.9.0 (2020-05-06)
 
 - Add a new provisioning configuration `clean_dokken_sandbox` to allow not cleaning up the Chef Infra and Test Kitchen files between converges to speed up repeatedly converging systems. This defaults to true which maintains the existing behavior. Thanks `@chrisUsick`
