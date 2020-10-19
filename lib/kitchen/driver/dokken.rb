@@ -15,9 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require 'digest'
+require 'digest' unless defined?(Digest)
 require 'kitchen'
-require 'tmpdir'
+require 'tmpdir' unless defined?(Dir.mktmpdir)
 require 'docker'
 require 'lockfile'
 require_relative '../helpers'
@@ -61,6 +61,7 @@ module Kitchen
       default_config :userns_host, false
       default_config :pull_platform_image, true
       default_config :pull_chef_image, true
+      default_config :memory_limit, 0
 
       # (see Base#create)
       def create(state)
@@ -300,6 +301,7 @@ module Kitchen
             'NetworkMode' => self[:network_mode],
             'PortBindings' => port_bindings,
             'Tmpfs' => dokken_tmpfs,
+            'Memory' => self[:memory_limit],
           },
           'NetworkingConfig' => {
             'EndpointsConfig' => {
