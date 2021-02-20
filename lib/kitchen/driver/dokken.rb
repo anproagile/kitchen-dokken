@@ -33,6 +33,7 @@ module Kitchen
     #
     # @author Sean OMeara <sean@sean.io>
     class Dokken < Kitchen::Driver::Base
+      default_config :aliases, nil
       default_config :api_retries, 20
       default_config :binds, []
       default_config :cap_add, nil
@@ -42,27 +43,26 @@ module Kitchen
       default_config :data_image, "dokken/kitchen-cache:latest"
       default_config :dns, nil
       default_config :dns_search, nil
-      default_config :docker_host_url, default_docker_host
       default_config :docker_info, docker_info
-      default_config :docker_registry, nil
       default_config :entrypoint, nil
       default_config :env, nil
+      default_config :ports, nil
+      default_config :docker_host_url, default_docker_host
       default_config :hostname, "dokken"
       default_config :image_prefix, nil
       default_config :links, nil
-      default_config :memory_limit, 0
       default_config :network_mode, "dokken"
       default_config :pid_one_command, 'sh -c "trap exit 0 SIGTERM; while :; do sleep 1; done"'
-      default_config :ports, nil
       default_config :privileged, false
-      default_config :pull_chef_image, true
-      default_config :pull_platform_image, true
       default_config :read_timeout, 3600
       default_config :security_opt, nil
       default_config :tmpfs, {}
-      default_config :userns_host, false
       default_config :volumes, nil
       default_config :write_timeout, 3600
+      default_config :userns_host, false
+      default_config :pull_platform_image, true
+      default_config :pull_chef_image, true
+      default_config :memory_limit, 0
 
       # (see Base#create)
       def create(state)
@@ -310,7 +310,7 @@ module Kitchen
           "NetworkingConfig" => {
             "EndpointsConfig" => {
               self[:network_mode] => {
-                "Aliases" => Array(self[:hostname]),
+                "Aliases" => Array(self[:hostname]).concat(Array(self[:aliases])),
               },
             },
           },
@@ -365,7 +365,7 @@ module Kitchen
 
       def make_data_image
         debug "driver - calling create_data_image"
-        create_data_image(config[:docker_registry])
+        create_data_image
       end
 
       def create_chef_container(state)
@@ -557,18 +557,10 @@ module Kitchen
         val.sub(%r{https?://}, "").split("/").first
       end
 
-      def image_path(image)
-        fqimage = "#{repo(image)}:#{tag(image)}"
-        if config[:docker_registry]
-          fqimage = "#{config[:docker_registry]}/#{fqimage}"
-        end
-        fqimage
-      end
-
       def pull_image(image)
         with_retries do
-          if Docker::Image.exist?(image_path(image), {}, docker_connection)
-            original_image = Docker::Image.get(image_path(image), {}, docker_connection)
+          if Docker::Image.exist?("#{repo(image)}:#{tag(image)}", {}, docker_connection)
+            original_image = Docker::Image.get("#{repo(image)}:#{tag(image)}", {}, docker_connection)
           end
 
           new_image = Docker::Image.create({ "fromImage" => "#{repo(image)}:#{tag(image)}" }, docker_connection)

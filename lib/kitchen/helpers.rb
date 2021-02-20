@@ -56,13 +56,9 @@ X8N2N9ZNnORJqK374yGj1jWUU66mQhPvn49QpG8P2HEoh2RQjNvyHA==
       EOF
     end
 
-    def data_dockerfile(registry)
-      from = "centos:7"
-      if registry
-        from = "#{registry}/#{from}"
-      end
+    def data_dockerfile
       <<-EOF
-FROM #{from}
+FROM centos:7
 MAINTAINER Sean OMeara \"sean@sean.io\"
 ENV LANG en_US.UTF-8
 
@@ -87,12 +83,12 @@ VOLUME /opt/verifier
       EOF
     end
 
-    def create_data_image(registry)
+    def create_data_image
       return if ::Docker::Image.exist?(data_image)
 
       tmpdir = Dir.tmpdir
       FileUtils.mkdir_p "#{tmpdir}/dokken"
-      File.write("#{tmpdir}/dokken/Dockerfile", data_dockerfile(registry))
+      File.write("#{tmpdir}/dokken/Dockerfile", data_dockerfile)
       File.write("#{tmpdir}/dokken/authorized_keys", insecure_ssh_public_key)
 
       i = ::Docker::Image.build_from_dir(
