@@ -42,27 +42,27 @@ module Kitchen
       default_config :data_image, "dokken/kitchen-cache:latest"
       default_config :dns, nil
       default_config :dns_search, nil
-      default_config :docker_host_url, default_docker_host
       default_config :docker_info, docker_info
-      default_config :docker_registry, nil
       default_config :entrypoint, nil
       default_config :env, nil
+      default_config :ports, nil
+      default_config :docker_host_url, default_docker_host
       default_config :hostname, "dokken"
+      default_config :hostname_aliases, nil
       default_config :image_prefix, nil
       default_config :links, nil
-      default_config :memory_limit, 0
       default_config :network_mode, "dokken"
       default_config :pid_one_command, 'sh -c "trap exit 0 SIGTERM; while :; do sleep 1; done"'
-      default_config :ports, nil
       default_config :privileged, false
-      default_config :pull_chef_image, true
-      default_config :pull_platform_image, true
       default_config :read_timeout, 3600
       default_config :security_opt, nil
       default_config :tmpfs, {}
-      default_config :userns_host, false
       default_config :volumes, nil
       default_config :write_timeout, 3600
+      default_config :userns_host, false
+      default_config :pull_platform_image, true
+      default_config :pull_chef_image, true
+      default_config :memory_limit, 0
 
       # (see Base#create)
       def create(state)
@@ -169,10 +169,8 @@ module Kitchen
       end
 
       def work_image_dockerfile
-        from = registry_image_path(platform_image)
-        debug("driver - Building work image from #{from}")
         dockerfile_contents = [
-          "FROM #{from}",
+          "FROM #{platform_image}",
           "LABEL X-Built-By=kitchen-dokken X-Built-From=#{platform_image}",
         ]
         Array(config[:intermediate_instructions]).each do |c|
@@ -289,8 +287,7 @@ module Kitchen
         config = {
           "name" => runner_container_name,
           "Cmd" => Shellwords.shellwords(self[:pid_one_command]),
-          # locally built image, must use short-name
-          "Image" => short_image_path(work_image),
+          "Image" => "#{repo(work_image)}:#{tag(work_image)}",
           "Hostname" => self[:hostname],
           "Env" => self[:env],
           "ExposedPorts" => exposed_ports,
@@ -313,7 +310,7 @@ module Kitchen
           "NetworkingConfig" => {
             "EndpointsConfig" => {
               self[:network_mode] => {
-                "Aliases" => Array(self[:hostname]),
+                "Aliases" => Array(self[:hostname]).concat(Array(self[:hostname_aliases])),
               },
             },
           },
@@ -332,8 +329,7 @@ module Kitchen
         debug "driver - creating #{data_container_name}"
         config = {
           "name" => data_container_name,
-          # locally built image, must use short-name
-          "Image" => short_image_path(data_image),
+          "Image" => "#{repo(data_image)}:#{tag(data_image)}",
           "HostConfig" => {
             "PortBindings" => port_bindings,
             "PublishAllPorts" => true,
@@ -356,7 +352,7 @@ module Kitchen
         begin
           lockfile.lock
           with_retries { ::Docker::Network.get("dokken", {}, docker_connection) }
-        rescue ::Docker::Error::NotFoundError
+        rescue
           begin
             with_retries { ::Docker::Network.create("dokken", {}) }
           rescue ::Docker::Error => e
@@ -369,7 +365,7 @@ module Kitchen
 
       def make_data_image
         debug "driver - calling create_data_image"
-        create_data_image(config[:docker_registry])
+        create_data_image
       end
 
       def create_chef_container(state)
@@ -392,14 +388,14 @@ module Kitchen
             config = {
               "name" => chef_container_name,
               "Cmd" => "true",
-              "Image" => registry_image_path(chef_image),
+              "Image" => "#{repo(chef_image)}:#{tag(chef_image)}",
               "HostConfig" => {
                 "NetworkMode" => self[:network_mode],
               },
             }
             chef_container = create_container(config)
             state[:chef_container] = chef_container.json
-          rescue ::Docker::Error, StandardError => e
+          rescue ::Docker::Error => e
             raise "driver - #{chef_container_name} failed to create #{e}"
           end
         ensure
@@ -408,12 +404,12 @@ module Kitchen
       end
 
       def pull_platform_image
-        debug "driver - pulling #{short_image_path(platform_image)}"
+        debug "driver - pulling #{chef_image} #{repo(platform_image)} #{tag(platform_image)}"
         config[:pull_platform_image] ? pull_image(platform_image) : pull_if_missing(platform_image)
       end
 
       def pull_chef_image
-        debug "driver - pulling #{short_image_path(chef_image)}"
+        debug "driver - pulling #{chef_image} #{repo(chef_image)} #{tag(chef_image)}"
         config[:pull_chef_image] ? pull_image(chef_image) : pull_if_missing(chef_image)
       end
 
@@ -426,7 +422,7 @@ module Kitchen
 
       def container_exist?(name)
         return true if ::Docker::Container.get(name, {}, docker_connection)
-      rescue StandardError, ::Docker::Error::NotFoundError
+      rescue
         false
       end
 
@@ -444,43 +440,8 @@ module Kitchen
         [repo, tag]
       end
 
-      # Return the 'repo' half of a docker image path. Agnostic about if a
-      # registry is included, this effectively is just "before the colon"
-      #
-      # @param image [String] the docker image path to parse
-      # @return [String] the repo portion of `image`
       def repo(image)
         parse_image_name(image)[0]
-      end
-
-      # Return the 'tag' of a docker image path. Will be `latest` if there
-      # is no explicit tag in the image path.
-      #
-      # @param image [String] the docker image path to parse
-      # @return [String] the tag of `image`
-      def tag(image)
-        parse_image_name(image)[1]
-      end
-
-      # Ensures an explicit tag on an image path.
-      #
-      # @param image [String] the docker image path to parse
-      # @return [String] `repo`:`tag`
-      def short_image_path(image)
-        "#{repo(image)}:#{tag(image)}"
-      end
-
-      # Qualifies the results of `short_image_path` with any registry the
-      # user has requested
-      #
-      # @param image [String] the docker image path to parse
-      # @return [String] The most fully-qualified registry path we cn make
-      def registry_image_path(image)
-        if config[:docker_registry]
-          "#{config[:docker_registry]}/#{short_image_path(image)}"
-        else
-          short_image_path(image)
-        end
       end
 
       def create_container(args)
@@ -550,6 +511,10 @@ module Kitchen
         end
       end
 
+      def tag(image)
+        parse_image_name(image)[1]
+      end
+
       def chef_container_name
         "chef-#{chef_version}"
       end
@@ -582,7 +547,7 @@ module Kitchen
       end
 
       def pull_if_missing(image)
-        return if ::Docker::Image.exist?(registry_image_path(image), {}, docker_connection)
+        return if ::Docker::Image.exist?("#{repo(image)}:#{tag(image)}", {}, docker_connection)
 
         pull_image image
       end
@@ -593,13 +558,12 @@ module Kitchen
       end
 
       def pull_image(image)
-        path = registry_image_path(image)
         with_retries do
-          if Docker::Image.exist?(path, {}, docker_connection)
-            original_image = Docker::Image.get(path, {}, docker_connection)
+          if Docker::Image.exist?("#{repo(image)}:#{tag(image)}", {}, docker_connection)
+            original_image = Docker::Image.get("#{repo(image)}:#{tag(image)}", {}, docker_connection)
           end
 
-          new_image = Docker::Image.create({ "fromImage" => path }, docker_connection)
+          new_image = Docker::Image.create({ "fromImage" => "#{repo(image)}:#{tag(image)}" }, docker_connection)
 
           !(original_image && original_image.id.start_with?(new_image.id))
         end

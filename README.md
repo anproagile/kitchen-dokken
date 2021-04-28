@@ -1,5 +1,6 @@
 # kitchen-dokken
 
+[![Build Status](https://travis-ci.org/test-kitchen/kitchen-dokken.svg?branch=master)](https://travis-ci.org/test-kitchen/kitchen-dokken)
 [![Gem Version](https://badge.fury.io/rb/kitchen-dokken.svg)](https://badge.fury.io/rb/kitchen-dokken)
 
 ## Overview
@@ -10,13 +11,13 @@ This Test Kitchen plugin provides a driver, transport, and provisioner for rapid
 
 kitchen-dokken is fast. Really fast.
 
-Test Kitchen itself has four components: Drivers, Transports, Provisioners, and Verifiers. Drivers are responsible for creating a system on local hypervisors or a cloud. Transports such as ssh or winrm are responsible for connecting to these hosts. Provisioners are responsible for provisioning the hosts to the desired state using scripts or configuration management tools. The final component is the verifier which is responsible for verifying the system state matches the desired state.
+Test Kitchen itself has four components: Drivers, Transports, Provisioners, and Verifiers. Drivers are responsible for creating a system on local hypervisors or a cloud. Transports such as ssh or winrm are responsible for connecting to these hosts. Provisioners are responsible for provisioning the hosts to the desired state using scripts or configuration management tools. The final components is the verifier which is responsible for verifying the system state matches the desired state.
 
-Unlike all other Test Kitchen drivers, kitchen-dokken handles all the tasks of the driver, transport, and provisioner itself. This approach requires a narrow focus of just Chef Infra cookbook testing, but provides ultra-fast testing times. Docker containers have a fast creation and start time, and dokken uses the official Chef Infra Client containers instead of spending the time to download and install the client. These design decisions result in tests that run in seconds instead of minutes and don't require high bandwidth Internet connections.
+Unlike all other Test Kitchen drivers, kitchen-dokken handles all the tasks of the driver, transport, and provisioner itself. This approach requires a narrow focus of just Chef Infra cookbook testing, but provides ultra fast testing times. Docker containers have a fast creation and start time, and dokken uses the official Chef Infra Client containers instead of spending the time to download and install the client. These design decisions result in tests that run in seconds instead of minutes and don't require high banwidth Internet connections.
 
 ### kitchen-dokken vs. other drivers
 
-As stated above kitchen-dokken is purpose-built for speed and it achieves this by narrowing the testing scope to just Chef Infra cookbook testing. Other drivers like kitchen-vagrant or kitchen-docker are general-purpose drivers that can be used with any of the Kitchen provisioners such as kitchen-puppet or kitchen-ansible. Also, keep in mind that testing with containers is not a perfect analog to a full-blown system. The dokken-images containers are designed to be similar to a standard OS install, but they do not perfectly match those installs and may need additional packages to work properly. If you're looking for a perfect analog to your production systems, without the additional work of package installation, then consider a driver such as kitchen-vagrant. If you're willing to potentially invest in a bit of package troubleshooting in exchange for faster feedback cycles then kitchen-dokken is for you.
+As stated above kitchen-dokken is purpose built for speed and it achieves this by narrowing the testing scope to just Chef Infra cookbook testing. Other drivers like kitchen-vagrant or kitchen-docker are general purpose drivers that can be used with any of the Kitchen provisioners such as kitchen-puppet or kitchen-ansible. Also keep in mind that testing with containers is not a perfect analog to a full blown system. The dokken-images containers are designed to be similar to a standard OS install, but they do not perfectly match those installs and may need additional packages to work properly. If you're looking for perfect analog to your production systems, without the additional work of package installation, then consider a driver such as kitchen-vagrant. If you're willing to potentially invest in a bit of package troubleshooting in exchange for faster feedback cycles then kitchen-dokken is for you.
 
 ## Usage
 
@@ -26,7 +27,7 @@ A sample kitchen-dokken `kitchen.yml` config:
 ---
 driver:
   name: dokken
-  chef_version: latest # or 16 or 16.0 or 16.0.300 or current
+  chef_version: latest # or 15 or 15.0 or 15.0.300 or curent
 
 transport:
   name: dokken
@@ -130,7 +131,8 @@ laptop:~/src/chef-cookbooks/hello_dokken$ time kitchen converge
        Removing non-cookbook files before transfer
        Preparing validation.pem
        Preparing client.rb
-Starting Chef Infra Client, version 16.10.8
+Starting Chef Client, version 12.19.5
+[2017-02-08T04:23:00+00:00] WARN: unable to detect ipaddress
 Creating a new client identity for default-centos-7 using the validator key.
 resolving cookbooks for run list: ["hello_dokken::default"]
 Synchronizing Cookbooks:
@@ -161,7 +163,7 @@ user    0m1.080s
 sys    0m0.210s
 ```
 
-The `kitchen-converge` phase of the kitchen run uses the provisioner to upload cookbooks through the data container, then execs `chef-client` in the runner container. It does NOT install Chef Infra Client, as it has already been mounted by the driver. The transport then commits the runner container, creating an image that only contains the changes made by Chef.
+The `kitchen-converge` phase of the kitchen run uses the provisioner to upload cookbooks through the data container, then execs `chef-client` in the runner container. It does NOT install Chef Infra Client, as it is has already mounted by the driver. The transport then commits the runner container, creating an image that only contains the changes made by Chef.
 
 #### List containers
 
@@ -287,18 +289,24 @@ centos              7                   67591570dd29        7 weeks ago         
 
 Due to the nature of Docker, a handful of considerations need to be addressed.
 
-A complete example of a non-trivial `kitchen.yml` is found in the `docker` cookbook, at https://github.com/chef-cookbooks/docker/blob/master/kitchen.yml
+A complete example of a non-trivial `kitchen.yml` is found in the `docker` cookbook, at
+https://github.com/chef-cookbooks/docker/blob/master/kitchen.yml
 
 ### Minimalist images
 
-The Distros (debian, centos, etc) will typically manage an official image on the Docker Hub. They are really pushing the boundaries of minimalist images, well beyond what is typically laid to disk as part of a "base installation".
+The Distros (debian, centos, etc) will typically manage an official image on the
+Docker Hub. They are really pushing the boundaries of minimalist images, well
+beyond what is typically laid to disk as part of a "base installation".
 
-Very often, an image will come with a package manager, GNU coreutils, and that's about it. This can differ greatly from what is found in typical Vagrant and IaaS images.
+Very often, an image will come with a package manager, GNU coreutils, and
+that's about it. This can differ greatly from what is found in typical Vagrant
+and IaaS images.
 
 Because of this, it is often necessary to "cheat" and install prerequisites
 into the image before running Chef, Serverspec, or your own programs.
 
-To help with this, the Dokken driver provides an `intermediate_instructions` directive. Here is an example from `httpd`
+To help with this, the Dokken driver provides an `intermediate_instructions`
+directive. Here is an example from `httpd`
 
 ```yaml
 platforms:
@@ -319,7 +327,7 @@ This should be used as little as possible.
 #### Exemple use case of intermediate_instruction
 
 A possible use case is running kitchen behind a [MITM proxy](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)
-If you did read the link, it's scary yes, but a reality in many corporate networks where any HTTPS connection is intercepted, when done right (morally) the proxy uses an internal Certificate Authority (CA) which is not trusted by most programs.
+If you did read the link, it's scary yes, but a reality in many corporate networks where any https connection is intercepted, when done right (morally) the proxy use a internal Certificate Authority (CA) which is not trusted by most programs.
 
 It's always a problem to get things accessing TLS secured servers through this kind of proxy when working in a container and here is how you can do it for Chef specifically.
 
@@ -337,19 +345,26 @@ driver:
 
 The code above does call a site (here free.fr, my french ISP :)) with openssl s_client and does an ugly awk parsing to extract the root CA from the chain and write it in `/usr/local/share/ca-certificate/ca.crt` and then update system certs (which makes curl, wget, and other system calls works with the proxy)
 
-The second RUN creates an entrypoint for the container which will add the cert to Chef CA bundle and then exec whatever is passed as `pid_one_command` (see next paragraph, it does match CMD in dockerfile), this ensures once the container is created with chef volume and data volume mounted, the Chef's CA bundle accept your proxy certificate.
+The second RUN create an entrypoint for the container which will add the cert to Chef CA bundle and then exec whatever is passed as `pid_one_command` (see next paragraph, it does match CMD in dockerfile), this ensure once the container is created with chef volume and data volume mounted, the Chef's CA bundle accept your proxy certificate.
 
-Caveat: multiple suites running will add the cert to the chef container each time and consume a significant amount of disk space over time. In CI systems you'll want to regularly prune containers to avoid this problem.
+Caveat: multiple suites running will add the cert to the chef container each time and may make it grow large after a time, in CI system regularily pruning containers this should not be a problem.
 
 ### Process orientation
 
-Docker containers are process oriented rather than machine oriented. This makes life interesting when testing things not necessarily destined to run in Docker. Specifically, Chef Infra recipes that utilize the `service` resource present a problem. To overcome this, we run the container in a way that mimics a machine.
+Docker containers are process oriented rather than machine oriented. This makes life
+interesting when testing things not necessarily destined to run in Docker. Specifically,
+Chef recipes that utilize the `service` resource present a problem. To overcome this,
+we run the container in a way that mimics a machine.
 
-As mentioned previously, we use an infinite loop to keep the container process from exiting. This allows us to do multiple `kitchen converge` and `kitchen login` operations without needing to commit a layer and start a new container. This is fine until we need to start testing recipes that use the `service` resource.
+As mentioned previously, we use an infinite loop to keep the container process from exiting.
+This allows us to do multiple `kitchen converge` and `kitchen login` operations without
+needing to commit a layer and start a new container. This is fine until we need to start
+testing recipes that use the `service` resource.
 
 The default `pid_one_command` is `'sh -c "trap exit 0 SIGTERM; while :; do sleep 1; done"'`
 
-If you need to use the service resource to drive Upstart or systemd, you'll need to specify the path to init. Here are more examples from `httpd`
+If you need to use the service resource to drive Upstart or systemd, you'll need to
+specify the path to init. Here are more examples from `httpd`
 
 - systemd for RHEL-7 based platforms
 
@@ -380,7 +395,7 @@ You can combine `intermediate_instructions` and `pid_one_command` as needed.
 
 ### Running with User Namespaces enabled
 
-IF you are running a Docker daemon with user namespace remapping enabled you'll get errors running dokken with privileged containers.
+IF you are running a Docker daemon with user namespace remapping enabled you'll get errors running dokken with priveleged containers.
 
 To mitigate this, add the following to your driver definition:
 ```yaml
@@ -449,7 +464,7 @@ useful environment for debugging. They're hosted on the Docker cloud
 and are rebuilt every day to keep the package metadata fresh.
 
 To use them, simply prefix a distro with "dokken/" in the `image`
-name. Unfortunately, you'll still have to specify `pid_one_command` (for
+name. Unfortunately you'll still have to specify `pid_one_command` (for
 the time being).
 
 ```yaml
@@ -461,22 +476,12 @@ the time being).
   - recipe[whatever::recipe]
 ```
 
-If you have your own mirror of Docker Hub, or you are using a registry other
-than Docker Hub, you can tell Dokken to always pull from a different registry
-by setting `docker_registry` under `driver`:
-
-```
-driver:
-  docker_registry: docker.sample.com
-```
-
-If you do this, it must have access to the dokken images for the platforms you
-want to test as well as the `centos` image that is used for the dynamic
-testing image.
-
 ### Tmpfs on /tmp
 
-When starting a container with an init system, it will often mount a tmpfs into `/tmp`. When this happens, it is necessary to specify a `root_path` for the verifier if using traditional Bats or Serverspec. This is due to Docker bind mounting the kitchen data before running init. This is not necessary when using Inspec.
+When starting a container with an init system, it will often mount a tmpfs into `/tmp`.
+When this happens, it is necessary to specify a `root_path` for the verifier if using
+traditional Bats or Serverspec. This is due to Docker bind mounting the kitchen data
+before running init. This is not necessary when using Inspec.
 
 ```yaml
 verifier:
@@ -487,7 +492,8 @@ verifier:
 ### Install Chef Infra Client from current channel
 
 Chef publishes all functioning builds to the [Docker Hub](https://hub.docker.com/r/chef/chef/tags),
-including those from the "current" channel. If you wish to use pre-release versions of Chef, set your `chef_version` value to "current". If you need to test older versions of `chef-client` that are not available on docker hub as `chef/chef`, you can overwrite `chef_image` under the [driver context](https://github.com/someara/kitchen-dokken/blob/2.5.1/lib/kitchen/driver/dokken.rb#L40) to a custom image name such as `someara/chef`.
+including those from the "current" channel. If you wish to use pre-release versions of Chef, set
+your `chef_version` value to "current". If you need to test older versions of `chef-client` that are not available on docker hub as `chef/chef`, you can overwrite `chef_image` under the [driver context](https://github.com/someara/kitchen-dokken/blob/2.5.1/lib/kitchen/driver/dokken.rb#L40) to a custom image name such as `someara/chef`.
 
 ### Chef Infra Client options
 
@@ -527,7 +533,8 @@ driver:
 
 ### Testing without Chef
 
-Containers that supply a no-op binary which returns a successful exit status can be tested without requiring Chef Infra to actually converge.
+Containers that supply a no-op binary which returns a successful exit status can
+be tested without requiring Chef to actually converge.
 
 ```yaml
 verifier:
@@ -549,6 +556,17 @@ By default the memory limit of the containers you run is unbound (or limited by 
 driver:
   name: dokken
   memory_limit: 2147483648 # 2GB
+```
+
+### Adding hostname aliases
+
+You can set the `hostname_aliases` parameter to create additional hostnames that will resolve to the container:
+
+```yaml
+driver:
+  name: dokken
+  hostname_aliases:
+    - foo
 ```
 
 ## FAQ
